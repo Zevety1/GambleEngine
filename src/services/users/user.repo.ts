@@ -28,8 +28,6 @@ export class UserRepo{
 
     public async regUser(username:string, password:string) {
         return this.repo.save({username:username, password:password})
-        await this.repo.save(newUser)
-        return newUser
     }
 
 }
