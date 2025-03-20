@@ -1,4 +1,4 @@
-    export class Player {
+    export default class Player {
     
     public getCard(cardDeck:string[], hand:string[]):void {
         let index_card = Math.floor(Math.random() * cardDeck.length)

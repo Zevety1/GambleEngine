@@ -2,10 +2,11 @@
 import { UserRepo } from "../../services/users/user.repo";
 import { BJRepo } from "../../services/blackJack/blackJack.repo";
 import { CrapsRepo } from "../../services/craps/craps.repo";
+import express from 'express'
 
 
 
-const express = require('express')
+//const express = require('express')
 const router = express.Router()
 
 

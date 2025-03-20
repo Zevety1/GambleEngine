@@ -1,9 +1,8 @@
 import Dice from "../../../classes/diceClass"
 import { UserRepo } from "../../../services/users/user.repo";
 import { CrapsRepo } from "../../../services/craps/craps.repo";
+import express from 'express'
 
-
-const express = require('express')
 const router = express.Router()
 
 const dice = new Dice
@@ -14,7 +13,7 @@ router.post('/throwDice', async (req, res) =>  {
     const bet = req.body.bet
     const userId = req.body.id;
 
-    if (!(typeof bet === 'number') || !(typeof userId === 'string')) {
+    if (typeof bet !== 'number' || typeof userId !== 'string') {
         return res.status(400).json({ error: 'Необходимы числовой параметр bet и строка userId' });
     }
 
@@ -27,7 +26,7 @@ router.post('/throwDice', async (req, res) =>  {
         });
     }
 
-    if (userData.balance < bet || bet < 1) {
+    if (userData.balance < bet || bet > 0) {
         return res.status(400).json({
             error: 'Ставка должна быть больше 0 и не превышать баланс пользователя'
         });

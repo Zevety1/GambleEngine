@@ -1,15 +1,12 @@
 
 import { UserRepo } from "../../../services/users/user.repo";
-import { Player } from "../../../classes/blackJackClass";
+import  Player  from "../../../classes/blackJackClass";
 import { BJRepo } from "../../../services/blackJack/blackJack.repo";
+import express from 'express'
 
-
-
-const express = require('express')
 const router = express.Router()
 
 const numbers:string[] = ['2','3','4','5','6','7','8','9','10','J','Q','K','A']
-
 const suits:string[] = ['D', 'H', 'S', 'C']
 
 const player = new Player

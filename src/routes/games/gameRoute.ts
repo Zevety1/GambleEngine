@@ -1,6 +1,6 @@
-const express = require('express')
+import express from 'express'
+
 const router = express.Router()
-const session = require('express-session');
 
 const bjRoutes = require('./blackjack/bjRoute')
 router.use('/blackjack', bjRoutes)

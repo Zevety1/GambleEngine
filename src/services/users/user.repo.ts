@@ -10,38 +10,24 @@ export class UserRepo{
         this.repo = getRepository(UserModel)
     }
 
+    public async saveData(userData) {
+        return await this.repo.save(userData)
+    }
+
     public async getUserById(userId:string) {
-        const userData = await this.repo.findOne({ where: { id: userId } })
-        return userData
+        return await this.repo.findOne({ where: { id: userId } })
     }
 
-    public async getTopUsers() {
-        const usersData = await this.repo.find({
-            order: {balance: "DESC"},
-            take: 10
-        })
-        return usersData
-    }
-
-    public async plusBet(userId:string, bet:number) {
-        const userData = await this.getUserById(userId)
-        userData.balance += bet
-        await this.repo.save(userData)
-    }
-
-    public async minusBet(userId:string, bet:number) {
-        const userData = await this.getUserById(userId)
-        userData.balance -= bet
-        await this.repo.save(userData)
+    public async getAllUsers() {
+        return await this.repo.find()
     }
 
     public async findByUsername(username:string) {
-        const userData = await this.repo.findOne({ where: { username: username } })
-        return userData
+        return await this.repo.findOne({ where: { username: username } })
     }
 
     public async regUser(username:string, password:string) {
-        const newUser = this.repo.create({username:username, password:password})
+        return this.repo.save({username:username, password:password})
         await this.repo.save(newUser)
         return newUser
     }
