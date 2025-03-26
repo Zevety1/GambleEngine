@@ -1,13 +1,14 @@
-import { getRepository, Repository } from "typeorm";
+import { Repository } from "typeorm";
 import { UserModel} from "./user.model"
-
+import { AppDataSource } from "../../data-source";
+import { hashPassword } from "../../classes/cryptClass";
 
 export class UserRepo{
 
     public repo: Repository<UserModel>
 
     constructor() {
-        this.repo = getRepository(UserModel)
+        this.repo = AppDataSource.getRepository(UserModel);
     }
 
     public async saveData(userData) {
@@ -26,8 +27,15 @@ export class UserRepo{
         return await this.repo.findOne({ where: { username: username } })
     }
 
-    public async regUser(username:string, password:string) {
-        return this.repo.save({username:username, password:password})
+    public async createNewUser(username:string, password:string) {
+        return this.repo.save({username:username, password: await hashPassword(password)})
     }
 
-}
+    public async getTopUsers() {
+    return await this.repo.find({
+             order: {balance: "DESC"},
+             take: 10
+            })
+
+        }
+    }

@@ -1,10 +1,11 @@
 import { UserRepo } from "../services/users/user.repo";
+import * as express from 'express'
+import { authJwtMiddleware } from "./middleware/auth";
 
-const express = require('express')
 const router = express.Router()
 
 
-router.get('/leaderboard', async (req, res) => {
+router.get('/leaderboard', authJwtMiddleware, async (req, res) => {
 
 
     const userRepo = new UserRepo()

@@ -1,5 +1,7 @@
-import { getRepository, Repository } from "typeorm";
+import { Repository } from "typeorm";
 import { CrapsModel } from "./craps.model"
+import { AppDataSource } from "../../data-source";
+
 
 
 export class CrapsRepo{
@@ -7,28 +9,21 @@ export class CrapsRepo{
     public repo: Repository<CrapsModel>
 
     constructor() {
-        this.repo = getRepository(CrapsModel)
+        this.repo = AppDataSource.getRepository(CrapsModel);
     }
 
-    public async getUserById(userId) {
-        const crapsData = await this.repo.findOne({ where: { user_id: userId } })
-        return crapsData
+    public async getUserById(userId:string) {
+        return await this.repo.findOne({ where: { userId: userId, activeGame: true }})
     }
 
-    public async updateDataById(userId, stageGame?, setValue?) {
-        const crapsData = await this.repo.findOne({ where: { user_id: userId } })
-        if (stageGame !== undefined) {
-            crapsData.stage_game = stageGame;
-          }
-          if (setValue !== undefined) {
-            crapsData.set_value = setValue;
-          }
-        await this.repo.save(crapsData)
+    public async updateDataById(userId, data) {
+        return this.repo.update({
+            userId:userId, activeGame: true
+        }, data)
     }
 
-    public async newUser(userId:string) {
-        const newUser = this.repo.create({user_id:userId})
-        await this.repo.save(newUser)
+    public async createNewGame(userId:string, bet:number) {
+        return await this.repo.save({userId: userId, betInGame:bet})
     }
 
 }

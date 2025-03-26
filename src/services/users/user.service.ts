@@ -1,13 +1,12 @@
-import { DataSource, DeepPartial } from "typeorm";
 import { UserRepo } from "./user.repo";
-import { UserModel } from "./user.model";
 
 export class UserService {
     public userRepo: UserRepo;
 
-    constructor(db: DataSource) {
+    constructor() {
         this.userRepo = new UserRepo();
-    }    
+      }
+
 
     public async plusBet(userId:string, bet:number) {
         const userData = await this.userRepo.getUserById(userId)
@@ -21,12 +20,20 @@ export class UserService {
         await this.userRepo.saveData(userData)
     }
 
+    public async getUserById(userId:string) {
+        return await this.userRepo.getUserById(userId)
+    }
+
+    public async findByUsername(username:string) {
+        return await this.userRepo.findByUsername(username)
+    }
+
+    public async createNewUser(username:string, password:string) {
+        return await this.userRepo.createNewUser(username, password)
+    }
+
     public async getTopUsers() {
-        const usersData = await this.userRepo.getAllUsers({
-            order: {balance: "DESC"},
-            take: 10
-        })
-        return usersData1
+        return await this.userRepo.getTopUsers()
     }
 
 }

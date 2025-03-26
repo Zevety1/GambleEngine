@@ -1,12 +1,13 @@
 
-import { UserRepo } from "../../services/users/user.repo";
-import { BJRepo } from "../../services/blackJack/blackJack.repo";
-import { CrapsRepo } from "../../services/craps/craps.repo";
-import express from 'express'
+import * as express from 'express'
+import { UserService } from "../../services/users/user.service";
+import * as jwt from 'jsonwebtoken';
+import { comaprePasswords } from "../..//classes/cryptClass";
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 
 
-//const express = require('express')
 const router = express.Router()
 
 
@@ -18,18 +19,25 @@ router.get('/login', async (req, res) => {
         return res.status(400).json({ error: 'Неверные данные' });
     }
 
-    const userRepo = new UserRepo()
-    const userData = await userRepo.findByUsername(username)
+    const userService = new UserService()
+    const userData = await userService.findByUsername(username)
 
     if (!userData) {
         return res.status(400).json({ error: 'Такого пользователя не существует' });
     }
 
-    if (!(userData.password == password)) {
+    if (!(await comaprePasswords(password, userData.password))) {
         return res.status(400).json({ error: 'Неверный пароль' });
     }
 
+    const token = jwt.sign(
+        { userId: userData.id, username: userData.username },
+        process.env.SECRET,
+        { expiresIn: '1h' }
+    );
+
     return res.json ({
+            token: token,
             userId: userData.id,
             username: userData.username,
             balacne: userData.balance,
@@ -39,18 +47,18 @@ router.get('/login', async (req, res) => {
 })
 
 
-router.post('/reg', async (req, res) => {
+router.post('/createNewUser', async (req, res) => {
 
     const username = req.body.username
     const password = req.body.password
 
-    if (!(typeof username === 'string') || !(typeof password === 'string')) {
+    if (typeof username !== 'string' || typeof password !== 'string') {
         return res.status(400).json({ error: 'Неверный формат данных' });
     }
 
-    const userRepo = new UserRepo()
+    const userService = new UserService
 
-    if (await userRepo.findByUsername(username)) {
+    if (await userService.findByUsername(username)) {
         return res.status(400).json({error: 'Пользователь с таким именем уже существует'})
     }
 
@@ -58,18 +66,12 @@ router.post('/reg', async (req, res) => {
         return res.status(400).json({error: 'Пароль слишком короткий'})
     }
 
-    const bjRepo = new BJRepo()
-    const creapsRepo = new CrapsRepo()
-
-    const newUser = await userRepo.regUser(username, password)
-
-    await bjRepo.newUser(newUser.id)
-    await creapsRepo.newUser(newUser.id)
+    const newUserData = await userService.createNewUser(username, password)
    
     res.json({
-        userId: newUser.id,
-        username: newUser.username,
-        balance: newUser.balance,
+        userId: newUserData.id,
+        username: newUserData.username,
+        balance: newUserData.balance,
         message: 'Пользователь успешно создан'
     })
     

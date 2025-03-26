@@ -4,6 +4,6 @@
     "target": "ES6",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "useDefineForClassFields": false
+    "useDefineForClassFields": false,
   }
 }

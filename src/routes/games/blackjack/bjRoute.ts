@@ -1,27 +1,25 @@
-
-import { UserRepo } from "../../../services/users/user.repo";
-import  Player  from "../../../classes/blackJackClass";
-import { BJRepo } from "../../../services/blackJack/blackJack.repo";
-import express from 'express'
+import  {Player}  from "../../../classes/blackJackClass";
+import { UserService } from "../../../services/users/user.service";
+import { BJService } from "../../../services/blackJack/blackJack.service";
+import { authJwtMiddleware } from "../../middleware/auth";
+import  * as express from 'express'
 
 const router = express.Router()
 
-const numbers:string[] = ['2','3','4','5','6','7','8','9','10','J','Q','K','A']
-const suits:string[] = ['D', 'H', 'S', 'C']
 
 const player = new Player
 
 
-router.post('/drawCard', async (req, res) => {
+router.post('/drawCard', authJwtMiddleware, async (req, res) => {
     const bet = req.body.bet
-    const userId = req.body.userId
+    const userId = req.body.id
 
     if (!(typeof bet === 'number') || !(typeof userId === 'string')) {
         return res.status(400).json({ error: 'Необходимы числовой параметр bet и строка userId' });
     }
 
-    const userRepo = new UserRepo()
-    const userData = await userRepo.getUserById(userId)
+    const userService = new UserService()
+    const userData = await userService.getUserById(userId)
 
     if (!userData) {
         return res.status(404).json({
@@ -35,69 +33,69 @@ router.post('/drawCard', async (req, res) => {
         });
     }
 
-    const bjRepo = new BJRepo()
-    const bjData = await bjRepo.getUserById(userId)
+    const bjService = new BJService()
 
-    if (!req.session.game) {
-        req.session.game = {
-            deck: [],
-            playerHand: [],
-            dealerHand: [],
-            message: '',
-        };
+    if (!(await bjService.getUserById(userId))) {
+        await bjService.startNewGame(userId, bet)
     }
 
-    const game = req.session.game;
+    const bjData = await bjService.getUserById(userId)
 
-    if (bjData.stage_game == 1) {
+    if (bjData.betInGame !== bet) {
+        return res.status(400).json({
+            error:'Нельзя изменять ставку в уже начатой игре'
+        })
+    }
 
-        await bjRepo.updateDataById(userId, 2)
-        game.playerHand = []
-        game.dealerHand = []
-        game.deck = []
-        game.message = 'Draw or stand?'
 
-        for (let number of numbers) {
-            for (let suit of suits) {
-            game.deck.push(number + suit);
-            }
-        }
+    if (bjData.stageGame == 1) {
+
+        await bjService.updateDataById(userId, {stageGame: 2})
+
 
         for (let i = 1; i<=2; i++) {
-            player.getCard(game.deck, game.playerHand)
-            player.getCard(game.deck, game.dealerHand)
+            await bjService.updateDataById(userId, {playerHand: player.getCard(bjData.playerHand, bjData.dealerHand)});
+            await bjService.updateDataById(userId, {dealerHand: player.getCard(bjData.dealerHand, bjData.playerHand)});
         }
 
         res.json({
-            stageGame: bjData.stage_game,
-            playerHand: game.playerHand,
-            dealerHand: game.dealerHand[0],
-            sumPlayer: player.getSumOfHand(game.playerHand),
-            sumDealer: player.getSumOfHand(game.dealerHand.slice(0,1)),
-            message: game.message
+            stageGame: bjData.stageGame,
+            playerHand: bjData.playerHand,
+            dealerHand: bjData.dealerHand[0],
+            sumPlayer: player.getSumOfHand(bjData.playerHand),
+            sumDealer: player.getSumOfHand(bjData.dealerHand.slice(0,1)),
+            message: 'Start Game'
         })
 
         return
   }
 
 
-    if (bjData.stage_game == 2) {
-        player.getCard(game.deck, game.playerHand)
+    if (bjData.stageGame == 2) {
+        await bjService.updateDataById(userId, {playerHand: player.getCard(bjData.playerHand, bjData.dealerHand)})
         
 
-        if (player.getSumOfHand(game.playerHand) > 21) {
-            game.message = 'Bust'
-            await bjRepo.updateDataById(userId, 1)
-            await userRepo.minusBet(userId, bet) 
+        if (player.getSumOfHand(bjData.playerHand) > 21) {
+            await bjService.updateDataById(userId, {stageGame: 1, activeGame: false})
+            await userService.minusBet(userId, bet) 
+            return res.json({
+                stageGame: bjData.stageGame,
+                playerHand: bjData.playerHand,
+                dealerHand: bjData.dealerHand[0],
+                sumPlayer: player.getSumOfHand(bjData.playerHand),
+                sumDealer: player.getSumOfHand(bjData.dealerHand.slice(0,1)),
+                message: 'Bust'
+            })
         }
+        
 
         res.json({
-            stageGame: bjData.stage_game,
-            playerHand: game.playerHand,
-            dealerHand: game.dealerHand[0],
-            sumPlayer: player.getSumOfHand(game.playerHand),
-            sumDealer: player.getSumOfHand(game.dealerHand.slice(0,1)),
-            message: game.message
+            stageGame: bjData.stageGame,
+            playerHand: bjData.playerHand,
+            dealerHand: bjData.dealerHand[0],
+            sumPlayer: player.getSumOfHand(bjData.playerHand),
+            sumDealer: player.getSumOfHand(bjData.dealerHand.slice(0,1)),
+            message: 'Draw or stand?'
         })
         return
     }
@@ -106,16 +104,16 @@ router.post('/drawCard', async (req, res) => {
 })
 
 
-router.post('/stand', async (req, res) => {
+router.post('/stand', authJwtMiddleware, async (req, res) => {
     const bet = req.body.bet
-    const userId = req.body.userId
+    const userId = req.body.id
 
     if (!(typeof bet === 'number') || !(typeof userId === 'string')) {
         return res.status(400).json({ error: 'Необходимы числовой параметр bet и строка userId' });
     }
 
-    const userRepo = new UserRepo()
-    const userData = await userRepo.getUserById(userId)
+    const userService = new UserService()
+    const userData = await userService.getUserById(userId)
 
     if (!userData) {
         return res.status(404).json({
@@ -123,48 +121,53 @@ router.post('/stand', async (req, res) => {
         });
     }
 
-    if (userData.balance < bet || bet < 1) {
+    const bjService = new BJService()
+    const bjData = await bjService.getUserById(userId)
+
+
+    if (!bjData) {
         return res.status(400).json({
-            error: 'Ставка должна быть больше 0 и не превышать ваш баланс'
-        });
+            error: 'Игра не начата'
+        })
     }
 
-    const bjRepo = new BJRepo()
-    await bjRepo.updateDataById(userId, 3)
-    const bjData = await bjRepo.getUserById(userId)
-
-    if (!req.session.game) {
-        return res.status(400).json({ error: 'Игра не начата' });
-      }
-      const game = req.session.game;
-
-    const sumPlayer = player.getSumOfHand(game.playerHand)
-
-    while (player.getSumOfHand(game.dealerHand) < sumPlayer && player.getSumOfHand(game.dealerHand) < 17) {
-        player.getCard(game.deck, game.dealerHand)
+    if (bjData.betInGame !== bet) {
+        return res.status(400).json({
+            error:'Нельзя изменять ставку в уже начатой игре'
+        })
     }
 
-    if (sumPlayer > player.getSumOfHand(game.dealerHand) || player.getSumOfHand(game.dealerHand) > 21) {
-        game.message = 'Win'
-        await userRepo.plusBet(userId, bet)
+
+    const sumPlayer = player.getSumOfHand(bjData.playerHand)
+
+    while (player.getSumOfHand(bjData.dealerHand) < sumPlayer && player.getSumOfHand(bjData.dealerHand) < 17) {
+        await bjService.updateDataById(userId, {dealerHand: player.getCard(bjData.dealerHand, bjData.playerHand)});
+    }
+
+    if (sumPlayer > player.getSumOfHand(bjData.dealerHand) || player.getSumOfHand(bjData.dealerHand) > 21) {
+        await userService.plusBet(userId, bet)
+        res.json({
+            stageGame: bjData.stageGame,
+            playerHand: bjData.playerHand,
+            dealerHand: bjData.dealerHand,
+            sumPlayer: player.getSumOfHand(bjData.playerHand),
+            sumDealer: player.getSumOfHand(bjData.dealerHand),
+            message: 'Win'
+        })
     } else {
-        game.message = 'Lose'
-        await userRepo.minusBet(userId, bet)
+        await userService.minusBet(userId, bet)
+        res.json({
+            stageGame: bjData.stageGame,
+            playerHand: bjData.playerHand,
+            dealerHand: bjData.dealerHand,
+            sumPlayer: player.getSumOfHand(bjData.playerHand),
+            sumDealer: player.getSumOfHand(bjData.dealerHand),
+            message: 'Lose'
+        })
     }
 
-    await bjRepo.updateDataById(userId, 1)
-
-    res.json({
-        stageGame: bjData.stage_game,
-        playerHand: game.playerHand,
-        dealerHand: game.dealerHand,
-        sumPlayer: player.getSumOfHand(game.playerHand),
-        sumDealer: player.getSumOfHand(game.dealerHand),
-        message: game.message
-    })
-
+    await bjService.updateDataById(userId, {stageGame: 1, activeGame: false})
     
-
 })
 
 module.exports = router;
