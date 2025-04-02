@@ -12,7 +12,7 @@ const dice = new Dice
 router.post('/throwDice', authJwtMiddleware, async (req, res) =>  {
     
     const bet = req.body.bet
-    const userId = req.body.id;
+    const userId = req.body.userId;
 
     if (typeof bet !== 'number' || typeof userId !== 'string') {
         return res.status(400).json({ error: 'Необходимы числовой параметр bet и строка userId' });
@@ -21,18 +21,11 @@ router.post('/throwDice', authJwtMiddleware, async (req, res) =>  {
     const userService = new UserService
     const userData = await userService.getUserById(userId)
 
-    if (!userData) {
-        return res.status(404).json({
-            error: 'Такого пользователя не существует'
-        });
-    }
-
-    if (userData.balance < bet || bet < 0) {
+    if (userData.balance < bet || bet <= 0) {
         return res.status(400).json({
             error: 'Ставка должна быть больше 0 и не превышать баланс пользователя'
         });
     }
-
 
     const crapsService = new CrapsService
 
@@ -87,6 +80,7 @@ router.post('/throwDice', authJwtMiddleware, async (req, res) =>  {
 
     if (crapsData.stageGame === 2) {
         const SumValue = dice.throwDice() + dice.throwDice()
+
         if (SumValue == crapsData.setValue) {
             res.json({
                 SumValue: SumValue,

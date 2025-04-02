@@ -32,7 +32,7 @@
     }
 
     public getSumOfHand(hand:iCard[]):number {
-        let handSum:number
+        let handSum = 0
         const cardValues:typeCardValue[] = hand.map((card) => card.cardValue)
         cardValues.forEach((card) => {
             if (typeof card == 'number') {

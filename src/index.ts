@@ -12,7 +12,6 @@ const app = express()
 
 app.use(express.json());
 
-
 app.use('/games', gameRoutes)
 app.use('',leaderboardRoute)
 app.use('/auth', authRoute)

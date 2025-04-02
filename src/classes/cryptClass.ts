@@ -1,7 +1,7 @@
 import * as bcrypt from 'bcrypt';
 
 export async function hashPassword(password) {
-    return await bcrypt.hash(password, process.env.SAULT);
+    return await bcrypt.hash(password, parseInt(process.env.SAULT));
 }
 
 export async function comaprePasswords(passwordInBody, passwordInDB) {

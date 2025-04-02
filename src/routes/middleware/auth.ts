@@ -11,8 +11,8 @@ export function authJwtMiddleware(req, res, next) {
     try {
         const decoded = jwt.verify(token, process.env.SECRET);
         req.user = decoded;
-        if (req.body.id !== req.user.userId) {
-            return res.status(400).json({error: 'Недействительный токен'})
+        if (req.body.userId !== req.user.userId) {
+            return res.status(400).json({error: 'Неверные данные пользователя'})
         }
         next();
     } catch {

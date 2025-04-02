@@ -7,7 +7,6 @@ const router = express.Router()
 
 router.get('/leaderboard', authJwtMiddleware, async (req, res) => {
 
-
     const userRepo = new UserRepo()
     const leaderboard = await userRepo.getTopUsers()
     
