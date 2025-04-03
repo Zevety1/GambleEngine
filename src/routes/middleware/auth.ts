@@ -12,7 +12,7 @@ export function authJwtMiddleware(req, res, next) {
         const decoded = jwt.verify(token, process.env.SECRET);
         req.user = decoded;
         if (req.body.userId !== req.user.userId) {
-            return res.status(400).json({error: 'Неверные данные пользователя'})
+            return res.status(400).json({error: 'Неверные данные или несуществующий пользователь'})
         }
         next();
     } catch {

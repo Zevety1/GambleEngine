@@ -1,4 +1,4 @@
-    type typeCardValue = 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 'J' | 'Q' | 'K' | 'A'
+    type typeCardValue = 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 'J' | 'Q' | 'K' | 'A' | 11 | 1
     type typeCardSuit = 'D' | 'H' | 'S' | 'C'
 
     export interface iCard {
@@ -32,21 +32,37 @@
     }
 
     public getSumOfHand(hand:iCard[]):number {
-        let handSum = 0
-        const cardValues:typeCardValue[] = hand.map((card) => card.cardValue)
-        cardValues.forEach((card) => {
-            if (typeof card == 'number') {
-                handSum += card
+        const cardValues:number[] = hand.map((card) => {
+            if (card.cardValue === 'A') {
+                return 11
             }
-            if (card == 'A') {
-                handSum += 11
+            if (card.cardValue === 'J' || card.cardValue === 'Q' || card.cardValue === 'K') {
+                return 10
             }
-            if (card == 'J' || card == 'Q' || card == 'K') {
-                handSum += 10
+            return card.cardValue})
+
+            let sumHand = cardValues.reduce((acc, current) => acc + current)
+
+            while (sumHand > 21 && hand.find((card) => card.cardValue === 'A')) {
+                sumHand -= 10
             }
-        })
-        return handSum
+
+            return sumHand
     }
 }
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
 
-
+    
+        
