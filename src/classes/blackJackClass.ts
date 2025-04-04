@@ -42,8 +42,10 @@
             return card.cardValue})
 
             let sumHand = cardValues.reduce((acc, current) => acc + current)
+            let aceIndex
 
-            while (sumHand > 21 && hand.find((card) => card.cardValue === 'A')) {
+            while (sumHand > 21 && (aceIndex = cardValues.indexOf(11)) !== -1) {
+                cardValues[aceIndex] = 1
                 sumHand -= 10
             }
 
