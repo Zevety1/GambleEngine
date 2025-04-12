@@ -1,25 +1,25 @@
-import { Entity, PrimaryGeneratedColumn, Column, UpdateDateColumn, CreateDateColumn} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, UpdateDateColumn, CreateDateColumn } from 'typeorm';
 
 @Entity({
-    name:'slots_jackpot'
+    name:'slots_jackpot',
 })
 export class SlotsJackpotModel {
     @PrimaryGeneratedColumn('uuid')
-    id:string;
+        id:string;
 
-    @Column({type:'int', nullable: false, default: 10000, name: 'jackpot'})
-    jackpot:number;
+    @Column({ type:'float', nullable: false, default: 10, name: 'jackpot' })
+        jackpot:number;
 
-    @Column({type:'boolean', nullable: false, default: true, name: 'active_jackpot' })
-    activeJackpot:boolean;
+    @Column({ type:'boolean', nullable: false, default: true, name: 'active_jackpot' })
+        activeJackpot:boolean;
 
 	@UpdateDateColumn({
-		name: 'updated_at',
-	})
-	updatedAt: Date;
+	    name: 'updated_at',
+	   })
+	    updatedAt: Date;
 
     @CreateDateColumn({
-		name: 'created_at',
-	})
-	createdAt: Date;
+	    name: 'created_at',
+	   })
+	    createdAt: Date;
 }

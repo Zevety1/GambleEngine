@@ -1,24 +1,26 @@
-import { UserRepo } from "../services/users/user.repo";
-import * as express from 'express'
-import { authJwtMiddleware } from "./middleware/auth";
+import * as express from 'express';
+import type { Request, Response } from 'express';
 
-const router = express.Router()
+import { UserRepo } from '../services/users/user.repo';
 
+import { authJwtMiddleware } from './middleware/auth';
 
-router.get('/leaderboard', authJwtMiddleware, async (req, res) => {
+const router = express.Router();
 
-    const userRepo = new UserRepo()
-    const leaderboard = await userRepo.getTopUsers()
-    
+router.get('/leaderboard', authJwtMiddleware, async (req: Request, res:Response):Promise<void> => {
+
+    const userRepo = new UserRepo();
+    const leaderboard = await userRepo.getTopTenUsers();
+      
     const formattedLeaderboard = leaderboard.map(user => ({
         username: user.username,
-        balance: user.balance
-      }));
+        balance: user.balance,
+    }));
 
     res.json({
-        leaderboard: formattedLeaderboard
+        leaderboard: formattedLeaderboard,
     });
+    return;
+});
 
-})
-
-module.exports = router;
+export default router;

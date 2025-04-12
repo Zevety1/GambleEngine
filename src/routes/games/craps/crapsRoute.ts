@@ -1,121 +1,141 @@
-import Dice from "../../../classes/diceClass"
-import { CrapsService } from "../../../services/craps/craps.service";
-import { UserService } from "../../../services/users/user.service";
-import * as express from 'express'
-import { authJwtMiddleware } from "../../middleware/auth";
+import * as express from 'express';
+import type { Request, Response } from 'express';
 
-const router = express.Router()
+import Dice from '../../../classes/diceClass';
+import { CrapsService } from '../../../services/craps/craps.service';
+import { UserService } from '../../../services/users/user.service';
+import { authJwtMiddleware } from '../../middleware/auth';
 
-const dice = new Dice
+const router = express.Router();
 
+const dice = new Dice;
 
-router.post('/throwDice', authJwtMiddleware, async (req, res) =>  {
+interface iCrapsRequestBody {
+  bet: number;
+}
+
+router.post('/throwDice', authJwtMiddleware, async (req:Request, res:Response):Promise<void> => {
+
+    const userId = req.user.userId; 
     
-    const bet = req.body.bet
-    const userId = req.body.userId;
+    const { bet } = req.body as iCrapsRequestBody;
 
-    if (typeof bet !== 'number' || typeof userId !== 'string') {
-        return res.status(400).json({ error: 'Необходимы числовой параметр bet и строка userId' });
+    if (!Number.isInteger(bet) || typeof bet !== 'number') {
+        res.status(400).json({ error: 'Необходим числовой параметр bet' });
+        return;
     }
 
-    const userService = new UserService
-    const userData = await userService.getUserById(userId)
+    const userService = new UserService;
+    const userData = await userService.getUserById(userId);
+
+    if (!userData) {
+        res.status(500).json({
+            error: 'Отсутствуют данные пользователя',
+        });
+        return;
+    }
 
     if (userData.balance < bet || bet <= 0) {
-        return res.status(400).json({
-            error: 'Ставка должна быть больше 0 и не превышать баланс пользователя'
+        res.status(400).json({
+            error: 'Ставка должна быть больше 0 и не превышать баланс пользователя',
         });
+        return;
     }
 
-    const crapsService = new CrapsService
+    const crapsService = new CrapsService;
 
-    if (!(await crapsService.getUserById(userId))) {
-        await crapsService.StartNewGame(userId, bet)
+    if (!(await crapsService.getUserGameById(userId))) {
+        await crapsService.startNewGame(userId, bet);
     }
-    
-    const crapsData = await crapsService.getUserById(userId)
+      
+    const crapsData = await crapsService.getUserGameById(userId);
 
-    if (crapsData.betInGame !== bet) {
-        return res.status(400).json({
-            error:'Нельзя изменять ставку в уже начатой игре'
-        })
+    if (!crapsData) {
+        res.status(500).json({
+            error: 'Отсутствуют данные игры',
+        });
+        return;
+    }
+
+    if (crapsData.bet !== bet) {
+        res.status(400).json({
+            error:'Нельзя изменять ставку в уже начатой игре',
+        });
+        return;
     }
 
     if (crapsData.stageGame === 1) {
-        const SumValue = dice.throwDice() + dice.throwDice()
+        const sumValue = dice.throwDice() + dice.throwDice();
 
+        if (sumValue === 7 || sumValue === 11) {
+            await userService.updateDataById(userId, { balance: userData.balance + bet });
+            await crapsService.updateDataById(userId, { activeGame: false, isWin:true });
 
-        if (SumValue == 7 || SumValue == 11) {
             res.json({
-                SumValue: SumValue,
+                sumValue: sumValue,
                 stageGame: crapsData.stageGame,
-                message:"Win"
-            })
-            await userService.plusBet(userId, bet) 
-            await crapsService.updateDataById(userId, {activeGame: false})
-            return
+                message:'Win',
+            });
+            return;
         }
 
-        if (SumValue == 2 || SumValue == 3 || SumValue == 12) {
+        if (sumValue === 2 || sumValue === 3 || sumValue === 12) {
+            await userService.updateDataById(userId, { balance: userData.balance - bet });
+            await crapsService.updateDataById(userId, { activeGame: false, isWin:false });
             res.json({
-                SumValue: SumValue,
+                sumValue: sumValue,
                 stageGame: crapsData.stageGame,
-                message:"Lose"
-            })
-            await userService.minusBet(userId, bet) 
-            await crapsService.updateDataById(userId, {activeGame: false})
-            return
+                message:'Lose',
+            });
+            return;
         }
-        await crapsService.updateDataById(userId, {stageGame:2, setValue:SumValue})
+
+        await crapsService.updateDataById(userId, { stageGame:2, setValue:sumValue });
 
         res.json({
-            SumValue: SumValue,
+            sumValue: sumValue,
             stageGame: crapsData.stageGame,
-            setValue: SumValue,
-            message:"Переход на второй этап"
-        })
-        return
-    }
-    
+            setValue: sumValue,
+            message:'Переход на второй этап',
+        });
+        return;
+    }   
 
     if (crapsData.stageGame === 2) {
-        const SumValue = dice.throwDice() + dice.throwDice()
+        const sumValue = dice.throwDice() + dice.throwDice();
+        
+        if (sumValue === crapsData.setValue) {
+            await crapsService.updateDataById(userId, { activeGame: false, isWin:true });
+            await userService.updateDataById(userId, { balance: userData.balance + bet });
 
-        if (SumValue == crapsData.setValue) {
             res.json({
-                SumValue: SumValue,
+                sumValue: sumValue,
+                setValue: crapsData.setValue,
                 stageGame: crapsData.stageGame,
-                message:"Win"
-            })
-
-            await crapsService.updateDataById(userId, {activeGame: false})
-            await userService.plusBet(userId, bet)  
-            return
+                message:'Win',
+            });
+            return;
         }     
 
-
-        if (SumValue == 7) {
+        if (sumValue === 7) {
+            await crapsService.updateDataById(userId, { activeGame: false, isWin:false });
+            await userService.updateDataById(userId, { balance: userData.balance - bet }); 
+          
             res.json({
-                SumValue: SumValue,
+                sumValue: sumValue,
                 stageGame: crapsData.stageGame,
-                message:"Lose"
-            })
-
-            await crapsService.updateDataById(userId, {activeGame: false})
-            await userService.minusBet(userId, bet)  
-            return
+                message:'Lose',
+            });
+            return;
         }
 
-
         res.json({
-            SumValue: SumValue,
+            sumValue: sumValue,
             stageGame: crapsData.stageGame,
             setValue: crapsData.setValue,
-            message:"Nothing"
-        })
-        return
+            message:'Nothing',
+        });
     }
-    }
-)
+});
 
-module.exports = router;
+export default router;

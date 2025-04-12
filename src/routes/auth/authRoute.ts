@@ -1,81 +1,88 @@
-
-import * as express from 'express'
-import { UserService } from "../../services/users/user.service";
-import * as jwt from 'jsonwebtoken';
-import { comaprePasswords } from "../..//classes/cryptClass";
 import * as dotenv from 'dotenv';
+import type { Router, Request, Response } from 'express';
+import * as express from 'express';
+import * as jwt from 'jsonwebtoken';
+
+import { comaprePasswords, hashPassword } from '../../classes/cryptClass';
+import { UserService } from '../../services/users/user.service';
+
 dotenv.config();
 
+const router:Router = express.Router();
+
+interface iAuthRequestBody {
+  password: string;
+  username: string;
+}
 
 
-const router = express.Router()
+router.get('/login', async (req:Request, res:Response):Promise<void> => {
 
-
-router.get('/login', async (req, res) => {
-    const username = req.body.username
-    const password = req.body.password
+    const { password, username } = req.body as iAuthRequestBody;
 
     if (!(typeof username === 'string') || !(typeof password === 'string')) {
-        return res.status(400).json({ error: 'Неверные данные' });
+        res.status(400).json({ error: 'Необходимы username и password в виде строк' });
+        return;
     }
 
-    const userService = new UserService()
-    const userData = await userService.findByUsername(username)
+    const userService = new UserService();
+    const userData = await userService.getUserByUsername(username);
 
     if (!userData) {
-        return res.status(400).json({ error: 'Такого пользователя не существует' });
+        res.status(400).json({ error: 'Такого пользователя не существует' });
+        return;
     }
 
     if (!(await comaprePasswords(password, userData.password))) {
-        return res.status(400).json({ error: 'Неверный пароль' });
+        res.status(400).json({ error: 'Неверный пароль' });
+        return;
     }
 
     const token = jwt.sign(
         { userId: userData.id, username: userData.username },
-        process.env.SECRET,
-        { expiresIn: '1h' }
+        process.env.SECRET as string,
+        { expiresIn: '1h' },
     );
 
-    return res.json ({
-            token: token,
-            userId: userData.id,
-            username: userData.username,
-            balacne: userData.balance,
-            message: 'Авторизация успешно выполнена'
+    res.json ({
+        token: token,
+        userId: userData.id,
+        username: userData.username,
+        balacne: userData.balance,
+        message: 'Авторизация успешно выполнена',
+    });
+});
 
-        }) 
-})
 
+router.post('/createNewUser', async (req:Request, res:Response):Promise<void> => {
 
-router.post('/createNewUser', async (req, res) => {
-
-    const username = req.body.username
-    const password = req.body.password
+    const { password, username } = req.body as iAuthRequestBody;
 
     if (typeof username !== 'string' || typeof password !== 'string') {
-        return res.status(400).json({ error: 'Неверный формат данных' });
+        res.status(400).json({ error: 'Необходимы username и password в виде строк' });
+        return;
     }
 
-    const userService = new UserService
+    const userService = new UserService;
 
-    if (await userService.findByUsername(username)) {
-        return res.status(400).json({error: 'Пользователь с таким именем уже существует'})
+    if (await userService.getUserByUsername(username)) {
+        res.status(400).json({ error: 'Пользователь с таким именем уже существует' });
+        return;
     }
 
     if (password.length < 5) {
-        return res.status(400).json({error: 'Пароль слишком короткий'})
+        res.status(400).json({ error: 'Пароль слишком короткий' });
+        return;
     }
 
-    const newUserData = await userService.createNewUser(username, password)
-   
-    res.json({
+    const newUserData = await userService.createNewUser(username, await hashPassword(password));
+    
+    res.json ({
         userId: newUserData.id,
         username: newUserData.username,
         balance: newUserData.balance,
-        message: 'Пользователь успешно создан'
-    })
-    
+        message: 'Пользователь успешно создан',
+    });
+});
 
-})
-
-module.exports = router;
+export default router;

@@ -1,9 +1,11 @@
-import * as bcrypt from 'bcrypt';
+import { hash, compare } from 'bcrypt';
 
-export async function hashPassword(password) {
-    return await bcrypt.hash(password, parseInt(process.env.SAULT));
+
+export async function hashPassword(password:string):Promise<string> {
+    return await hash(password, Number(process.env.SALT));
 }
 
-export async function comaprePasswords(passwordInBody, passwordInDB) {
-    return await bcrypt.compare(passwordInBody, passwordInDB)
+
+export async function comaprePasswords(passwordInBody:string, passwordInDB:string):Promise<boolean> {
+    return await compare(passwordInBody, passwordInDB);
 }

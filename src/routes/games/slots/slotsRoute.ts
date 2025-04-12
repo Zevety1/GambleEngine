@@ -1,96 +1,102 @@
-import { iSlot, Slot } from "../../../classes/slotsClass"
-import { UserService } from "../../../services/users/user.service";
-import * as express from 'express'
-import { authJwtMiddleware } from "../../middleware/auth";
-import { SlotsGameService } from "../../../services/slot/game/slotGame.service";
-import { SlotsJackpotService } from "../../../services/slot/jackpot/slotJackpot.service";
+import * as express from 'express';
+import type { Request, Response } from 'express';
 
-const router = express.Router()
+import type { iSlot } from '../../../classes/slotsClass';
+import { Slot } from '../../../classes/slotsClass';
+import { SlotsGameService } from '../../../services/slot/game/slotGame.service';
+import { SlotsJackpotService } from '../../../services/slot/jackpot/slotJackpot.service';
+import { UserService } from '../../../services/users/user.service';
+import { authJwtMiddleware } from '../../middleware/auth';
 
-const slots = new Slot
 
+const router = express.Router();
 
-router.post('/rollSlots', authJwtMiddleware, async (req, res) =>  {
+const slots = new Slot;
+
+interface iSlotsRequestBody {
+  bet: number;
+}
+
+router.post('/rollSlots', authJwtMiddleware, async (req:Request, res:Response):Promise<void> => {
+
+    const userId = req.user.userId; 
     
-    const bet = req.body.bet
-    const userId = req.body.userId;
+    const { bet } = req.body as iSlotsRequestBody;
 
-    if (typeof bet !== 'number' || typeof userId !== 'string') {
-        return res.status(400).json({ error: 'Необходимы числовой параметр bet и строка userId' });
+
+    if (!Number.isInteger(bet) || typeof bet !== 'number') {
+        res.status(400).json({ error: 'Необходимы целое число bet и строка userId' });
+        return;
     }
 
-    const userService = new UserService
-    const userData = await userService.getUserById(userId)
+    const userService = new UserService;
+    const userData = await userService.getUserById(userId);
+
+    if (!userData) {
+        res.status(500).json({
+            error: 'Отсутствуют данные пользователя',
+        });
+        return;
+    }
 
     if (userData.balance < bet || bet <= 0) {
-        return res.status(400).json({
-            error: 'Ставка должна быть больше 0 и не превышать баланс пользователя'
+        res.status(400).json({
+            error: 'Ставка должна быть больше 0 и не превышать баланс пользователя',
         });
+        return;
     }
 
+    const slotsService = new SlotsGameService;
 
-    const slotsService = new SlotsGameService
+    await slotsService.startNewGame(userId, bet);
 
-    if (!(await slotsService.getUserById(userId))) {
-        await slotsService.StartNewGame(userId, bet)
+    const jackpotService = new SlotsJackpotService;
+    const jackpotData = await jackpotService.getData();
+
+    if (!jackpotData) {
+        res.status(500).json({
+            error: 'Отсутствуют данные джекпота',
+        });
+        return;
     }
 
-    const jackpotService = new SlotsJackpotService
+    await jackpotService.updateData({ jackpot: jackpotData.jackpot + 0.1 });
 
-    const jackpotData = await jackpotService.getData()
+    const slotsResult:iSlot[] = slots.rollSlots();
 
+    const equalSlots: boolean = slots.checkEqualSlots(slotsResult);
 
-    await jackpotService.updateData({jackpot: jackpotData.jackpot + Math.ceil(bet * 0.02)})
+    let winAmount = 0;
 
+    const winMultiply: Record<string, number> = {
+        'E': 1.5,
+        'D': 2,
+        'C': 3,
+        'B': 4,
+        'A': 5,
+        '7': jackpotData.jackpot,
+    };
 
-    const slotsResult:iSlot[] = slots.rollSlots()
+    await userService.updateDataById(userId, { balance: userData.balance - bet });
 
-    const equalSlots: boolean = slots.checkEqualSlots(slotsResult)
+    if (equalSlots) {
+        const multiplyAmount = winMultiply[slotsResult[0].slotValue.toString()];
+        winAmount = Math.ceil(bet * multiplyAmount);
+        await userService.updateDataById(userId, { balance: userData.balance + winAmount - bet });
 
-    let winAmount = 0
-
-    if (equalSlots && slotsResult[0].slotValue === 'E') {
-        winAmount = bet * 1.5
-        await userService.plusBet(userId, winAmount + bet)
+        if (slotsResult[0].slotValue === 7) {
+            await jackpotService.updateData({ activeJackpot: false });
+            await jackpotService.createNewJackpot();
+        }
     }
+    
+    await slotsService.updateDataById(userId, { slots: slots.rollSlots(), activeGame: false, winAmount: winAmount });
 
-    if (equalSlots && slotsResult[0].slotValue === 'D') {
-        winAmount = bet * 2
-        await userService.plusBet(userId, winAmount + bet) 
-    }
-
-    if (equalSlots && slotsResult[0].slotValue === 'C') {
-        winAmount = bet * 3 
-        await userService.plusBet(userId, winAmount + bet)
-    }
-
-    if (equalSlots && slotsResult[0].slotValue === 'B') {
-        winAmount = bet * 4 
-        await userService.plusBet(userId, winAmount + bet)
-    }
-
-    if (equalSlots && slotsResult[0].slotValue === 'A') {
-        winAmount = bet * 5 
-        await userService.plusBet(userId, winAmount + bet)
-    }
-
-    if (equalSlots && slotsResult[0].slotValue === 7) {
-        winAmount = jackpotData.jackpot
-        await userService.plusBet(userId, winAmount + bet)
-        await jackpotService.updateData({activeJackpot: false})
-        await jackpotService.createNewJackpot()
-    }
-
-    await userService.minusBet(userId, bet)
-    await slotsService.updateDataById(userId, {slots: slots.rollSlots(), activeGame: false, winAmount: winAmount });
-
-    return res.json({
+    res.json({
         bet:bet,
         winAmount: winAmount,
-        slots: slotsResult
-    })
+        slots: slotsResult,
+    });
+});
 
-    }
-)
-
-module.exports = router;
+export default router;

@@ -1,9 +1,11 @@
 {
   "compilerOptions": {
+    "types": ["express"],
     "module": "CommonJS",
     "target": "ES6",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "useDefineForClassFields": false,
+    "strictNullChecks": true,
   }
 }

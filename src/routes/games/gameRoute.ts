@@ -1,12 +1,13 @@
-import * as express from 'express'
-import * as bjRoutes from './blackjack/bjRoute'
-import * as crapsRoutes from './craps/crapsRoute'
-import * as slotsRoutes from './slots/slotsRoute'
+import * as express from 'express';
 
-const router = express.Router()
+import bjRoutes from './blackjack/bjRoute';
+import crapsRoutes from './craps/crapsRoute';
+import slotsRoutes from './slots/slotsRoute';
 
-router.use('/blackjack', bjRoutes)
-router.use('/craps', crapsRoutes)
-router.use('/slots', slotsRoutes)
+const router = express.Router();
 
-module.exports = router;
+router.use('/blackjack', bjRoutes);
+router.use('/craps', crapsRoutes);
+router.use('/slots', slotsRoutes);
+
+export default router;
