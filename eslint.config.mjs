@@ -4,12 +4,10 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-    // Базовые настройки
     eslint.configs.recommended,
     ...tseslint.configs.strict,
     ...tseslint.configs.stylistic,
 
-    // Настройки парсера и окружения
     {
         languageOptions: {
             parser: tseslint.parser,
@@ -30,10 +28,8 @@ export default tseslint.config(
         },
     },
 
-    // Основные правила
     {
         rules: {
-        // Стиль кода
             'quotes': ['error', 'single', { avoidEscape: true }],
             'semi': ['error', 'always'],
             'indent': ['error', 4, { SwitchCase: 1 }],
@@ -41,7 +37,6 @@ export default tseslint.config(
             'object-curly-spacing': ['error', 'always'],
             'array-bracket-spacing': ['error', 'never'],
       
-            // Лучшие практики TypeScript
             '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
             '@typescript-eslint/consistent-indexed-object-style': ['error', 'record'],
             '@typescript-eslint/no-unnecessary-type-constraint': 'error',
@@ -49,7 +44,6 @@ export default tseslint.config(
             '@typescript-eslint/prefer-optional-chain': 'error',
             '@typescript-eslint/method-signature-style': ['error', 'property'],
       
-            // Импорты
             'import/order': [
                 'error',
                 {
@@ -61,18 +55,16 @@ export default tseslint.config(
             'import/no-duplicates': 'error',
             'import/no-useless-path-segments': 'error',
       
-            // Асинхронный код
             '@typescript-eslint/await-thenable': 'error',
             '@typescript-eslint/no-floating-promises': 'error',
             '@typescript-eslint/no-misused-promises': 'error',
       
-            // Безопасность типов
             '@typescript-eslint/no-unsafe-argument': 'error',
             '@typescript-eslint/no-unsafe-assignment': 'error',
             '@typescript-eslint/no-unsafe-member-access': 'error',
             '@typescript-eslint/no-unsafe-return': 'error',
       
-            // Другое
+
             'no-console': 'warn',
             'no-debugger': 'error',
             'no-var': 'error',
@@ -86,7 +78,7 @@ export default tseslint.config(
         },
     },
 
-    // Настройки для тестов
+
     {
         files: ['**/*.test.ts', '**/*.spec.ts'],
         rules: {
@@ -98,7 +90,6 @@ export default tseslint.config(
         },
     },
 
-    // Настройки для конфигурационных файлов
     {
         files: ['**/*.config.ts', '**/vite.config.ts'],
         rules: {
