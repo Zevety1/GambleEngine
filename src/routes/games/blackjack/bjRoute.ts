@@ -4,6 +4,7 @@ import type { Request, Response } from 'express';
 import { Player } from '../../../classes/blackJackClass';
 import { BJService } from '../../../services/blackJack/blackJack.service';
 import { UserService } from '../../../services/users/user.service';
+import { betValidation } from '../../../zod/validation';
 import { authJwtMiddleware } from '../../middleware/auth';
 
 
@@ -11,21 +12,19 @@ const router = express.Router();
 
 const player = new Player;
 
-interface iBJRequestBody {
-  bet: number;
-}
-
 
 router.post('/drawCard', authJwtMiddleware, async (req: Request, res: Response):Promise<void> => {
 
     const userId = req.user.userId; 
 
-    const { bet } = req.body as iBJRequestBody;
-
-    if (!Number.isInteger(bet) || !(typeof bet === 'number') ) {
-        res.status(400).json({ error: 'Необходим числовой параметр bet' });
+    const validation = betValidation.safeParse(req.body);
+    if (!validation.success) {
+        const errorMessage = validation.error.errors[0].message;
+        res.status(400).json({ error: errorMessage });
         return;
     }
+    
+    const bet = validation.data.bet;
 
     const userService = new UserService();
     const userData = await userService.getUserById(userId);
@@ -37,9 +36,9 @@ router.post('/drawCard', authJwtMiddleware, async (req: Request, res: Response):
         return;
     }
 
-    if (userData.balance < bet || bet <= 0) {
+    if (userData.balance < bet) {
         res.status(400).json({
-            error: 'Ставка должна быть больше 0 и не превышать баланс пользователя',
+            error: 'Ставка не может превышать баланс пользователя',
         });
         return;
     }
@@ -74,7 +73,7 @@ router.post('/drawCard', authJwtMiddleware, async (req: Request, res: Response):
             await bjService.updateDataById(userId, { dealerHand: player.getCard(bjData.dealerHand, bjData.playerHand) });
         }
 
-        res.json({
+        res.status(200).json({
             stageGame: bjData.stageGame,
             playerHand: bjData.playerHand,
             dealerHand: bjData.dealerHand[0],
@@ -93,7 +92,7 @@ router.post('/drawCard', authJwtMiddleware, async (req: Request, res: Response):
             await bjService.updateDataById(userId, { activeGame: false, isWin: false });
             await userService.updateDataById(userId, { balance: userData.balance - bet });
             
-            res.json({
+            res.status(200).json({
                 stageGame: bjData.stageGame,
                 playerHand: bjData.playerHand,        
                 dealerHand: bjData.dealerHand[0],        
@@ -105,7 +104,7 @@ router.post('/drawCard', authJwtMiddleware, async (req: Request, res: Response):
         }
           
 
-        res.json({
+        res.status(200).json({
             stageGame: bjData.stageGame,
             playerHand: bjData.playerHand,
             dealerHand: bjData.dealerHand[0],
@@ -123,17 +122,12 @@ router.post('/stand', authJwtMiddleware, async (req:Request, res:Response):Promi
    
     const userId = req.user.userId; 
 
-    if ( !(typeof userId === 'string')) {
-        res.status(400).json({ error: 'Необходима строка userId' });
-        return;
-    }
-
     const userService = new UserService();
     const userData = await userService.getUserById(userId);
 
     if (!userData) {
-        res.status(404).json({
-            error: 'Такого пользователя не существует',
+        res.status(500).json({
+            error: 'Отсутствуют данные пользователя',
         });
         return;
     }
@@ -157,7 +151,7 @@ router.post('/stand', authJwtMiddleware, async (req:Request, res:Response):Promi
     if (sumPlayer > player.getSumOfHand(bjData.dealerHand) || player.getSumOfHand(bjData.dealerHand) > 21) {
         await userService.updateDataById(userId, { balance: userData.balance + bjData.bet });
         await bjService.updateDataById(userId, { activeGame: false, isWin: true });
-        res.json({
+        res.status(200).json({
             stageGame: bjData.stageGame,
             playerHand: bjData.playerHand,
             dealerHand: bjData.dealerHand,
@@ -168,7 +162,7 @@ router.post('/stand', authJwtMiddleware, async (req:Request, res:Response):Promi
     } else {
         await userService.updateDataById(userId, { balance: userData.balance - bjData.bet });
         await bjService.updateDataById(userId, { activeGame: false, isWin: false });
-        res.json({
+        res.status(200).json({
             stageGame: bjData.stageGame,
             playerHand: bjData.playerHand,
             dealerHand: bjData.dealerHand,

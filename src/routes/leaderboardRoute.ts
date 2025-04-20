@@ -17,7 +17,7 @@ router.get('/leaderboard', authJwtMiddleware, async (req: Request, res:Response)
         balance: user.balance,
     }));
 
-    res.json({
+    res.status(200).json({
         leaderboard: formattedLeaderboard,
     });
     return;

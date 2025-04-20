@@ -9,7 +9,6 @@ export abstract class BaseRepo<Model extends ObjectLiteral> {
         this.repo = AppDataSource.getRepository(entity);
     }
 
-
     public async getRecord(where:FindOptionsWhere<Model>): Promise<Model | null> {
         return await this.repo.findOne({ where });
     }
