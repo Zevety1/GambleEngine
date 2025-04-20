@@ -5,25 +5,23 @@ import * as jwt from 'jsonwebtoken';
 
 import { comaprePasswords, hashPassword } from '../../classes/cryptClass';
 import { UserService } from '../../services/users/user.service';
+import { authValidation } from '../../zod/validation';
 
 dotenv.config();
 
 const router:Router = express.Router();
 
-interface iAuthRequestBody {
-  password: string;
-  username: string;
-}
 
+router.post('/login', async (req:Request, res:Response):Promise<void> => {
 
-router.get('/login', async (req:Request, res:Response):Promise<void> => {
-
-    const { password, username } = req.body as iAuthRequestBody;
-
-    if (!(typeof username === 'string') || !(typeof password === 'string')) {
-        res.status(400).json({ error: 'Необходимы username и password в виде строк' });
+    const validation = authValidation.safeParse(req.body);
+    if (!validation.success) {
+        const errorMessage = validation.error.errors[0].message;
+        res.status(400).json({ error: errorMessage });
         return;
     }
+
+    const { username, password } = validation.data;
 
     const userService = new UserService();
     const userData = await userService.getUserByUsername(username);
@@ -44,7 +42,7 @@ router.get('/login', async (req:Request, res:Response):Promise<void> => {
         { expiresIn: '1h' },
     );
 
-    res.json ({
+    res.status(200).json ({
         token: token,
         userId: userData.id,
         username: userData.username,
@@ -56,12 +54,14 @@ router.get('/login', async (req:Request, res:Response):Promise<void> => {
 
 router.post('/createNewUser', async (req:Request, res:Response):Promise<void> => {
 
-    const { password, username } = req.body as iAuthRequestBody;
-
-    if (typeof username !== 'string' || typeof password !== 'string') {
-        res.status(400).json({ error: 'Необходимы username и password в виде строк' });
+    const validation = authValidation.safeParse(req.body);
+    if (!validation.success) {
+        const errorMessage = validation.error.errors[0].message;
+        res.status(400).json({ error: errorMessage });
         return;
     }
+
+    const { username, password } = validation.data;
 
     const userService = new UserService;
 
@@ -77,7 +77,7 @@ router.post('/createNewUser', async (req:Request, res:Response):Promise<void> =>
 
     const newUserData = await userService.createNewUser(username, await hashPassword(password));
     
-    res.json ({
+    res.status(200).json ({
         userId: newUserData.id,
         username: newUserData.username,
         balance: newUserData.balance,

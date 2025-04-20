@@ -7,7 +7,7 @@ export class SlotsJackpotModel {
     @PrimaryGeneratedColumn('uuid')
         id:string;
 
-    @Column({ type:'float', nullable: false, default: 10, name: 'jackpot' })
+    @Column({ type:'float', nullable: false, default: 100, name: 'jackpot' })
         jackpot:number;
 
     @Column({ type:'boolean', nullable: false, default: true, name: 'active_jackpot' })

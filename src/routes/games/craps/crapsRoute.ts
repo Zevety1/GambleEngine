@@ -4,26 +4,26 @@ import type { Request, Response } from 'express';
 import Dice from '../../../classes/diceClass';
 import { CrapsService } from '../../../services/craps/craps.service';
 import { UserService } from '../../../services/users/user.service';
+import { betValidation } from '../../../zod/validation';
 import { authJwtMiddleware } from '../../middleware/auth';
 
 const router = express.Router();
 
 const dice = new Dice;
 
-interface iCrapsRequestBody {
-  bet: number;
-}
 
 router.post('/throwDice', authJwtMiddleware, async (req:Request, res:Response):Promise<void> => {
 
     const userId = req.user.userId; 
-    
-    const { bet } = req.body as iCrapsRequestBody;
 
-    if (!Number.isInteger(bet) || typeof bet !== 'number') {
-        res.status(400).json({ error: 'Необходим числовой параметр bet' });
+    const validation = betValidation.safeParse(req.body);
+    if (!validation.success) {
+        const errorMessage = validation.error.errors[0].message;
+        res.status(400).json({ error: errorMessage });
         return;
     }
+
+    const bet = validation.data.bet;
 
     const userService = new UserService;
     const userData = await userService.getUserById(userId);
@@ -35,9 +35,9 @@ router.post('/throwDice', authJwtMiddleware, async (req:Request, res:Response):P
         return;
     }
 
-    if (userData.balance < bet || bet <= 0) {
+    if (userData.balance < bet) {
         res.status(400).json({
-            error: 'Ставка должна быть больше 0 и не превышать баланс пользователя',
+            error: 'Ставка не может превышать баланс пользователя',
         });
         return;
     }
@@ -71,7 +71,7 @@ router.post('/throwDice', authJwtMiddleware, async (req:Request, res:Response):P
             await userService.updateDataById(userId, { balance: userData.balance + bet });
             await crapsService.updateDataById(userId, { activeGame: false, isWin:true });
 
-            res.json({
+            res.status(200).json({
                 sumValue: sumValue,
                 stageGame: crapsData.stageGame,
                 message:'Win',
@@ -82,7 +82,7 @@ router.post('/throwDice', authJwtMiddleware, async (req:Request, res:Response):P
         if (sumValue === 2 || sumValue === 3 || sumValue === 12) {
             await userService.updateDataById(userId, { balance: userData.balance - bet });
             await crapsService.updateDataById(userId, { activeGame: false, isWin:false });
-            res.json({
+            res.status(200).json({
                 sumValue: sumValue,
                 stageGame: crapsData.stageGame,
                 message:'Lose',
@@ -92,7 +92,7 @@ router.post('/throwDice', authJwtMiddleware, async (req:Request, res:Response):P
 
         await crapsService.updateDataById(userId, { stageGame:2, setValue:sumValue });
 
-        res.json({
+        res.status(200).json({
             sumValue: sumValue,
             stageGame: crapsData.stageGame,
             setValue: sumValue,
@@ -108,7 +108,7 @@ router.post('/throwDice', authJwtMiddleware, async (req:Request, res:Response):P
             await crapsService.updateDataById(userId, { activeGame: false, isWin:true });
             await userService.updateDataById(userId, { balance: userData.balance + bet });
 
-            res.json({
+            res.status(200).json({
                 sumValue: sumValue,
                 setValue: crapsData.setValue,
                 stageGame: crapsData.stageGame,
@@ -121,7 +121,7 @@ router.post('/throwDice', authJwtMiddleware, async (req:Request, res:Response):P
             await crapsService.updateDataById(userId, { activeGame: false, isWin:false });
             await userService.updateDataById(userId, { balance: userData.balance - bet }); 
           
-            res.json({
+            res.status(200).json({
                 sumValue: sumValue,
                 stageGame: crapsData.stageGame,
                 message:'Lose',
@@ -129,7 +129,7 @@ router.post('/throwDice', authJwtMiddleware, async (req:Request, res:Response):P
             return;
         }
 
-        res.json({
+        res.status(200).json({
             sumValue: sumValue,
             stageGame: crapsData.stageGame,
             setValue: crapsData.setValue,

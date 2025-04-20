@@ -6,6 +6,7 @@ import { Slot } from '../../../classes/slotsClass';
 import { SlotsGameService } from '../../../services/slot/game/slotGame.service';
 import { SlotsJackpotService } from '../../../services/slot/jackpot/slotJackpot.service';
 import { UserService } from '../../../services/users/user.service';
+import { betValidation } from '../../../zod/validation';
 import { authJwtMiddleware } from '../../middleware/auth';
 
 
@@ -13,21 +14,19 @@ const router = express.Router();
 
 const slots = new Slot;
 
-interface iSlotsRequestBody {
-  bet: number;
-}
 
 router.post('/rollSlots', authJwtMiddleware, async (req:Request, res:Response):Promise<void> => {
 
     const userId = req.user.userId; 
     
-    const { bet } = req.body as iSlotsRequestBody;
-
-
-    if (!Number.isInteger(bet) || typeof bet !== 'number') {
-        res.status(400).json({ error: 'Необходимы целое число bet и строка userId' });
+    const validation = betValidation.safeParse(req.body);
+    if (!validation.success) {
+        const errorMessage = validation.error.errors[0].message;
+        res.status(400).json({ error: errorMessage });
         return;
     }
+
+    const bet = validation.data.bet;
 
     const userService = new UserService;
     const userData = await userService.getUserById(userId);
@@ -39,9 +38,9 @@ router.post('/rollSlots', authJwtMiddleware, async (req:Request, res:Response):P
         return;
     }
 
-    if (userData.balance < bet || bet <= 0) {
+    if (userData.balance < bet) {
         res.status(400).json({
-            error: 'Ставка должна быть больше 0 и не превышать баланс пользователя',
+            error: 'Ставка не может превышать баланс пользователя',
         });
         return;
     }
@@ -59,8 +58,6 @@ router.post('/rollSlots', authJwtMiddleware, async (req:Request, res:Response):P
         });
         return;
     }
-
-    await jackpotService.updateData({ jackpot: jackpotData.jackpot + 0.1 });
 
     const slotsResult:iSlot[] = slots.rollSlots();
 
@@ -88,11 +85,13 @@ router.post('/rollSlots', authJwtMiddleware, async (req:Request, res:Response):P
             await jackpotService.updateData({ activeJackpot: false });
             await jackpotService.createNewJackpot();
         }
+    } else {
+        await jackpotService.updateData({ jackpot: jackpotData.jackpot + 0.1 }); 
     }
     
     await slotsService.updateDataById(userId, { slots: slots.rollSlots(), activeGame: false, winAmount: winAmount });
 
-    res.json({
+    res.status(200).json({
         bet:bet,
         winAmount: winAmount,
         slots: slotsResult,

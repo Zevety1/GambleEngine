@@ -9,7 +9,7 @@ export class SlotsJackpotService {
     }
 
     public async getData():Promise<SlotsJackpotModel | null> {
-        return await this.slotsGameRepo.getRecord({});
+        return await this.slotsGameRepo.getRecord({ activeJackpot:true });
     }
 
     public async createNewJackpot():Promise<SlotsJackpotModel> {
